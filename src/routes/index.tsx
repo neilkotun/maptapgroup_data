@@ -7,15 +7,16 @@ import {
   BarElement,
   LineElement,
   PointElement,
+  ArcElement,
   Title,
   Tooltip,
   Legend,
   Filler,
 } from 'chart.js'
-import { Bar, Line } from 'react-chartjs-2'
+import { Bar, Line, Doughnut } from 'react-chartjs-2'
 import { Trophy, Target, TrendingUp, Calendar, Medal } from 'lucide-react'
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend, Filler)
+ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, ArcElement, Title, Tooltip, Legend, Filler)
 
 export const Route = createFileRoute('/')({
   component: Dashboard,
@@ -124,6 +125,39 @@ function Dashboard() {
     })),
   }
 
+  // Doughnut chart: daily win distribution (ties split evenly)
+  const winCounts: Record<string, number> = Object.fromEntries(playerNames.map(n => [n, 0]))
+  for (const date of allDates) {
+    const dayScores = stats?.recentByDate.filter(s => s.gameDate === date) ?? []
+    if (dayScores.length === 0) continue
+    const best = Math.max(...dayScores.map(s => s.total))
+    const winners = dayScores.filter(s => s.total === best)
+    for (const w of winners) {
+      if (w.playerName in winCounts) winCounts[w.playerName] += 1 / winners.length
+    }
+  }
+  const winsData = {
+    labels: playerNames,
+    datasets: [
+      {
+        data: playerNames.map(n => Math.round(winCounts[n] * 10) / 10),
+        backgroundColor: playerNames.map((_, i) => PLAYER_COLORS[i % PLAYER_COLORS.length]),
+        borderWidth: 0,
+      },
+    ],
+  }
+
+  // Grouped bar chart: average score per city round per player
+  const cityBarData = {
+    labels: ['City 1', 'City 2', 'City 3', 'City 4', 'City 5'],
+    datasets: (stats?.cityAverages ?? []).map((row, idx) => ({
+      label: row.playerName,
+      data: [row.avgCity1, row.avgCity2, row.avgCity3, row.avgCity4, row.avgCity5].map(v => v !== null ? Number(v) : null),
+      backgroundColor: PLAYER_COLORS[playerNames.indexOf(row.playerName) % PLAYER_COLORS.length] + 'cc',
+      borderRadius: 4,
+    })),
+  }
+
   // Bar chart: average scores
   const avgBarData = {
     labels: stats?.leaderboard.map(l => l.playerName) ?? [],
@@ -186,9 +220,9 @@ function Dashboard() {
       {/* Summary cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard icon={<Trophy className="w-5 h-5" />} label="Overall Leader" value={overallLeader.playerName} color="text-amber-400" />
-        <StatCard icon={<Target className="w-5 h-5" />} label="Top Avg Score" value={`${overallLeader.avgScore}/500`} color="text-emerald-400" />
+        <StatCard icon={<Target className="w-5 h-5" />} label="Top Avg Score" value={`${overallLeader.avgScore}/1000`} color="text-emerald-400" />
         <StatCard icon={<Medal className="w-5 h-5" />} label="Most Games" value={`${[...stats.leaderboard].sort((a, b) => b.gamesPlayed - a.gamesPlayed)[0]?.playerName}`} color="text-blue-400" />
-        <StatCard icon={<TrendingUp className="w-5 h-5" />} label="Perfect 500s" value={`${stats.recentByDate.filter(s => s.total === 500).length}`} color="text-violet-400" />
+        <StatCard icon={<TrendingUp className="w-5 h-5" />} label="Perfect 1000s" value={`${stats.recentByDate.filter(s => s.total === 1000).length}`} color="text-violet-400" />
       </div>
 
       {/* Leaderboard table */}
@@ -279,7 +313,7 @@ function Dashboard() {
                     {[row.city1, row.city2, row.city3, row.city4, row.city5].map((c, ci) => (
                       <td key={ci} className="px-6 py-3 text-right">
                         {c !== null ? (
-                          <span className={`font-medium ${c >= 90 ? 'text-emerald-400' : c >= 70 ? 'text-blue-400' : c >= 50 ? 'text-amber-400' : 'text-red-400'}`}>
+                          <span className={`font-medium ${c >= 180 ? 'text-emerald-400' : c >= 140 ? 'text-blue-400' : c >= 100 ? 'text-amber-400' : 'text-red-400'}`}>
                             {c}
                           </span>
                         ) : (
@@ -289,7 +323,7 @@ function Dashboard() {
                     ))}
                     <td className="px-6 py-3 text-right">
                       <span className="font-bold text-white">{row.total}</span>
-                      <span className="text-slate-500 text-xs ml-1">/500</span>
+                      <span className="text-slate-500 text-xs ml-1">/1000</span>
                     </td>
                   </tr>
                 ))}
@@ -315,7 +349,7 @@ function Dashboard() {
                 },
                 scales: {
                   x: { ticks: { color: '#64748b' }, grid: { color: '#1e293b' } },
-                  y: { min: 0, max: 500, ticks: { color: '#64748b' }, grid: { color: '#1e293b' } },
+                  y: { min: 0, max: 1000, ticks: { color: '#64748b' }, grid: { color: '#1e293b' } },
                 },
               }}
             />
@@ -330,7 +364,42 @@ function Dashboard() {
                 plugins: { legend: { display: false } },
                 scales: {
                   x: { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } },
-                  y: { min: 0, max: 500, ticks: { color: '#64748b' }, grid: { color: '#1e293b' } },
+                  y: { min: 0, max: 1000, ticks: { color: '#64748b' }, grid: { color: '#1e293b' } },
+                },
+              }}
+            />
+          </div>
+
+          <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6">
+            <h2 className="text-lg font-semibold text-white mb-4">Daily Win Distribution</h2>
+            <div className="max-w-xs mx-auto">
+              <Doughnut
+                data={winsData}
+                options={{
+                  responsive: true,
+                  plugins: {
+                    legend: { position: 'right', labels: { color: '#94a3b8', boxWidth: 12 } },
+                    tooltip: {
+                      callbacks: {
+                        label: ctx => ` ${ctx.label}: ${ctx.parsed} win${ctx.parsed !== 1 ? 's' : ''}`,
+                      },
+                    },
+                  },
+                }}
+              />
+            </div>
+          </div>
+
+          <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6">
+            <h2 className="text-lg font-semibold text-white mb-4">Avg Score by City Round</h2>
+            <Bar
+              data={cityBarData}
+              options={{
+                responsive: true,
+                plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8', boxWidth: 12 } } },
+                scales: {
+                  x: { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } },
+                  y: { min: 0, max: 200, ticks: { color: '#64748b' }, grid: { color: '#1e293b' } },
                 },
               }}
             />
@@ -361,7 +430,7 @@ function Dashboard() {
                     {[row.avgCity1, row.avgCity2, row.avgCity3, row.avgCity4, row.avgCity5].map((v, i) => (
                       <td key={i} className="px-6 py-3 text-right">
                         {v !== null ? (
-                          <span className={`font-medium ${Number(v) >= 80 ? 'text-emerald-400' : Number(v) >= 60 ? 'text-blue-400' : Number(v) >= 40 ? 'text-amber-400' : 'text-red-400'}`}>
+                          <span className={`font-medium ${Number(v) >= 160 ? 'text-emerald-400' : Number(v) >= 120 ? 'text-blue-400' : Number(v) >= 80 ? 'text-amber-400' : 'text-red-400'}`}>
                             {v}
                           </span>
                         ) : <span className="text-slate-600">—</span>}
@@ -395,7 +464,7 @@ function Dashboard() {
                   <tr key={w.game_date} className="border-b border-slate-800/50 hover:bg-slate-800/40 transition-colors">
                     <td className="px-6 py-3 text-slate-300">{w.game_date}</td>
                     <td className="px-6 py-3 font-medium text-amber-400">🏆 {w.player_name}</td>
-                    <td className="px-6 py-3 text-right font-bold text-white">{w.total}<span className="text-slate-500 text-xs ml-1">/500</span></td>
+                    <td className="px-6 py-3 text-right font-bold text-white">{w.total}<span className="text-slate-500 text-xs ml-1">/1000</span></td>
                   </tr>
                 ))}
               </tbody>

@@ -56,10 +56,10 @@ function parseChatText(text: string, defaultDate: string): ParsedScore[] {
     const nameWithColon = line.match(/^([A-Za-z][A-Za-z '._-]{0,30}):\s*(.*)$/)
 
     // Simple "Name: total" line  e.g. "Alice: 438"
-    const simpleLine = line.match(/^([A-Za-z][A-Za-z '._-]{0,30}):\s*(\d{1,3})\s*$/)
+    const simpleLine = line.match(/^([A-Za-z][A-Za-z '._-]{0,30}):\s*(\d{1,4})\s*$/)
     if (simpleLine) {
       const total = parseInt(simpleLine[2])
-      if (total >= 0 && total <= 500) {
+      if (total >= 0 && total <= 1000) {
         results.push({
           playerName: simpleLine[1].trim(),
           gameDate: globalDate,
@@ -105,7 +105,7 @@ function parseChatText(text: string, defaultDate: string): ParsedScore[] {
         }
 
         // "Total: N"
-        const totalMatch = cityLine.match(/total\s*:?\s*(\d{1,3})/i)
+        const totalMatch = cityLine.match(/total\s*:?\s*(\d{1,4})/i)
         if (totalMatch) {
           total = parseInt(totalMatch[1])
           j++
@@ -114,7 +114,7 @@ function parseChatText(text: string, defaultDate: string): ParsedScore[] {
 
         if (cityMatch) {
           const val = parseInt(cityMatch[1])
-          if (val >= 0 && val <= 100) {
+          if (val >= 0 && val <= 200) {
             cityScores.push(val)
             j++
             continue
