@@ -1,0 +1,252 @@
+{
+  "version": "8",
+  "dialect": "postgres",
+  "id": "00eac873-39df-4567-a213-e2a032e41c58",
+  "prevIds": [
+    "00000000-0000-0000-0000-000000000000"
+  ],
+  "ddl": [
+    {
+      "isRlsEnabled": false,
+      "name": "daily_scores",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "players",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "type": "serial",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "daily_scores"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "player_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "daily_scores"
+    },
+    {
+      "type": "date",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "game_date",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "daily_scores"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "city1",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "daily_scores"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "city2",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "daily_scores"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "city3",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "daily_scores"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "city4",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "daily_scores"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "city5",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "daily_scores"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "total",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "daily_scores"
+    },
+    {
+      "type": "timestamp",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "daily_scores"
+    },
+    {
+      "type": "serial",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "players"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "name",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "players"
+    },
+    {
+      "type": "timestamp",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "players"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "player_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "players",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "name": "daily_scores_player_id_players_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "daily_scores"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "daily_scores_pkey",
+      "schema": "public",
+      "table": "daily_scores",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "players_pkey",
+      "schema": "public",
+      "table": "players",
+      "entityType": "pks"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "player_id",
+        "game_date"
+      ],
+      "nullsNotDistinct": false,
+      "name": "daily_scores_player_id_game_date_unique",
+      "entityType": "uniques",
+      "schema": "public",
+      "table": "daily_scores"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "name"
+      ],
+      "nullsNotDistinct": false,
+      "name": "players_name_key",
+      "schema": "public",
+      "table": "players",
+      "entityType": "uniques"
+    }
+  ],
+  "renames": []
+}
