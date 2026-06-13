@@ -28,8 +28,8 @@ function RootDocument({ children }: { children: React.ReactNode }) {
               <Link to="/" className="text-slate-300 hover:text-white [&.active]:text-emerald-400 [&.active]:font-semibold">
                 Dashboard
               </Link>
-              <Link to="/submit" className="text-slate-300 hover:text-white [&.active]:text-emerald-400 [&.active]:font-semibold">
-                Submit Scores
+              <Link to="/champions" className="text-slate-300 hover:text-white [&.active]:text-emerald-400 [&.active]:font-semibold">
+                Champions
               </Link>
             </div>
           </div>

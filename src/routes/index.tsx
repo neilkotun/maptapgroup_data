@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
 import {
   Chart as ChartJS,
@@ -14,7 +14,7 @@ import {
   Filler,
 } from 'chart.js'
 import { Bar, Line, Doughnut } from 'react-chartjs-2'
-import { Trophy, Target, TrendingUp, Calendar, Medal } from 'lucide-react'
+import { Calendar } from 'lucide-react'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, ArcElement, Title, Tooltip, Legend, Filler)
 
@@ -105,9 +105,9 @@ function Dashboard() {
     ? stats?.recentByDate.filter(s => s.gameDate === displayDate).sort((a, b) => b.total - a.total)
     : []
 
-  // Build line chart: score over time per player
+  // Build line chart: score over time per player (last 10 days)
   const playerNames = stats?.leaderboard.map(l => l.playerName) ?? []
-  const datesSorted = [...allDates].reverse().slice(-30)
+  const datesSorted = [...allDates].reverse().slice(-10)
 
   const lineData = {
     labels: datesSorted.map(d => d.slice(5)), // MM-DD
@@ -124,6 +124,15 @@ function Dashboard() {
       pointRadius: 4,
     })),
   }
+
+  // Tighten the y-axis: start just below the lowest plotted score
+  const plottedTotals = lineData.datasets.flatMap(d => d.data).filter((v): v is number => v !== null)
+  const trendYMin = plottedTotals.length
+    ? Math.max(0, Math.floor((Math.min(...plottedTotals) - 25) / 50) * 50)
+    : 0
+  const trendYMax = plottedTotals.length
+    ? Math.min(1000, Math.ceil((Math.max(...plottedTotals) + 25) / 50) * 50)
+    : 1000
 
   // Doughnut chart: daily win distribution (ties split evenly)
   const winCounts: Record<string, number> = Object.fromEntries(playerNames.map(n => [n, 0]))
@@ -150,7 +159,7 @@ function Dashboard() {
   // Grouped bar chart: average score per city round per player
   const cityBarData = {
     labels: ['City 1', 'City 2', 'City 3', 'City 4', 'City 5'],
-    datasets: (stats?.cityAverages ?? []).map((row, idx) => ({
+    datasets: (stats?.cityAverages ?? []).map(row => ({
       label: row.playerName,
       data: [row.avgCity1, row.avgCity2, row.avgCity3, row.avgCity4, row.avgCity5].map(v => v !== null ? Number(v) : null),
       backgroundColor: PLAYER_COLORS[playerNames.indexOf(row.playerName) % PLAYER_COLORS.length] + 'cc',
@@ -184,93 +193,22 @@ function Dashboard() {
       <div className="max-w-2xl mx-auto px-4 py-20 text-center">
         <div className="text-6xl mb-4">🌍</div>
         <h1 className="text-3xl font-bold mb-3 text-white">No scores yet!</h1>
-        <p className="text-slate-400 mb-6">
-          Start by submitting your group chat scores to see rankings and stats.
+        <p className="text-slate-400">
+          Scores will appear here once they're uploaded.
         </p>
-        <Link
-          to="/submit"
-          className="inline-block bg-emerald-500 hover:bg-emerald-400 text-white font-semibold px-6 py-3 rounded-xl transition-colors"
-        >
-          Submit Scores →
-        </Link>
       </div>
     )
   }
 
   const totalGames = allDates.length
   const totalEntries = stats.recentByDate.length
-  const overallLeader = stats.leaderboard[0]
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-white">MapTap Leaderboard</h1>
-          <p className="text-slate-400 mt-1">{totalGames} game days · {totalEntries} scores submitted</p>
-        </div>
-        <Link
-          to="/submit"
-          className="bg-emerald-500 hover:bg-emerald-400 text-white font-semibold px-5 py-2.5 rounded-xl transition-colors text-sm"
-        >
-          + Submit Scores
-        </Link>
-      </div>
-
-      {/* Summary cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={<Trophy className="w-5 h-5" />} label="Overall Leader" value={overallLeader.playerName} color="text-amber-400" />
-        <StatCard icon={<Target className="w-5 h-5" />} label="Top Avg Score" value={`${overallLeader.avgScore}/1000`} color="text-emerald-400" />
-        <StatCard icon={<Medal className="w-5 h-5" />} label="Most Games" value={`${[...stats.leaderboard].sort((a, b) => b.gamesPlayed - a.gamesPlayed)[0]?.playerName}`} color="text-blue-400" />
-        <StatCard icon={<TrendingUp className="w-5 h-5" />} label="Perfect 1000s" value={`${stats.recentByDate.filter(s => s.total === 1000).length}`} color="text-violet-400" />
-      </div>
-
-      {/* Leaderboard table */}
-      <div className="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-800">
-          <h2 className="text-lg font-semibold text-white">Overall Rankings</h2>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-slate-400 border-b border-slate-800">
-                <th className="px-6 py-3 text-left">Rank</th>
-                <th className="px-6 py-3 text-left">Player</th>
-                <th className="px-6 py-3 text-right">Games</th>
-                <th className="px-6 py-3 text-right">Avg Score</th>
-                <th className="px-6 py-3 text-right">Best</th>
-                <th className="px-6 py-3 text-right">Worst</th>
-                <th className="px-6 py-3 text-right">Total Pts</th>
-              </tr>
-            </thead>
-            <tbody>
-              {stats.leaderboard.map((entry, idx) => (
-                <tr
-                  key={entry.playerId}
-                  className="border-b border-slate-800/50 hover:bg-slate-800/40 transition-colors"
-                >
-                  <td className="px-6 py-4 text-xl">{getRank(idx)}</td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="w-3 h-3 rounded-full"
-                        style={{ backgroundColor: PLAYER_COLORS[idx % PLAYER_COLORS.length] }}
-                      />
-                      <span className="font-medium text-white">{entry.playerName}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-right text-slate-300">{entry.gamesPlayed ?? 0}</td>
-                  <td className="px-6 py-4 text-right">
-                    <span className="font-bold text-emerald-400">{entry.avgScore ?? '—'}</span>
-                  </td>
-                  <td className="px-6 py-4 text-right text-slate-300">{entry.maxScore ?? '—'}</td>
-                  <td className="px-6 py-4 text-right text-slate-300">{entry.minScore ?? '—'}</td>
-                  <td className="px-6 py-4 text-right text-slate-300">{entry.totalPoints ?? 0}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      <div>
+        <h1 className="text-3xl font-bold text-white">MapTap Leaderboard</h1>
+        <p className="text-slate-400 mt-1">{totalGames} game days · {totalEntries} scores submitted</p>
       </div>
 
       {/* Daily scores */}
@@ -335,26 +273,77 @@ function Dashboard() {
         )}
       </div>
 
+      {/* Leaderboard table */}
+      <div className="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-800">
+          <h2 className="text-lg font-semibold text-white">Overall Rankings</h2>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-slate-400 border-b border-slate-800">
+                <th className="px-6 py-3 text-left">Rank</th>
+                <th className="px-6 py-3 text-left">Player</th>
+                <th className="px-6 py-3 text-right">Games</th>
+                <th className="px-6 py-3 text-right">Avg Score</th>
+                <th className="px-6 py-3 text-right">Best</th>
+                <th className="px-6 py-3 text-right">Worst</th>
+                <th className="px-6 py-3 text-right">Total Pts</th>
+              </tr>
+            </thead>
+            <tbody>
+              {stats.leaderboard.map((entry, idx) => (
+                <tr
+                  key={entry.playerId}
+                  className="border-b border-slate-800/50 hover:bg-slate-800/40 transition-colors"
+                >
+                  <td className="px-6 py-4 text-xl">{getRank(idx)}</td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-3 h-3 rounded-full"
+                        style={{ backgroundColor: PLAYER_COLORS[idx % PLAYER_COLORS.length] }}
+                      />
+                      <span className="font-medium text-white">{entry.playerName}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-right text-slate-300">{entry.gamesPlayed ?? 0}</td>
+                  <td className="px-6 py-4 text-right">
+                    <span className="font-bold text-emerald-400">{entry.avgScore ?? '—'}</span>
+                  </td>
+                  <td className="px-6 py-4 text-right text-slate-300">{entry.maxScore ?? '—'}</td>
+                  <td className="px-6 py-4 text-right text-slate-300">{entry.minScore ?? '—'}</td>
+                  <td className="px-6 py-4 text-right text-slate-300">{entry.totalPoints ?? 0}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Score trends — full width */}
+      {mounted && (
+        <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6">
+          <h2 className="text-lg font-semibold text-white mb-4">Score Trends (last 10 days)</h2>
+          <Line
+            data={lineData}
+            options={{
+              responsive: true,
+              plugins: {
+                legend: { position: 'bottom', labels: { color: '#94a3b8', boxWidth: 12 } },
+              },
+              scales: {
+                x: { ticks: { color: '#64748b' }, grid: { color: '#1e293b' } },
+                y: { min: trendYMin, max: trendYMax, ticks: { color: '#64748b' }, grid: { color: '#1e293b' } },
+              },
+            }}
+          />
+        </div>
+      )}
+
       {/* Charts */}
       {mounted && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6">
-            <h2 className="text-lg font-semibold text-white mb-4">Score Trends (last 30 days)</h2>
-            <Line
-              data={lineData}
-              options={{
-                responsive: true,
-                plugins: {
-                  legend: { position: 'bottom', labels: { color: '#94a3b8', boxWidth: 12 } },
-                },
-                scales: {
-                  x: { ticks: { color: '#64748b' }, grid: { color: '#1e293b' } },
-                  y: { min: 0, max: 1000, ticks: { color: '#64748b' }, grid: { color: '#1e293b' } },
-                },
-              }}
-            />
-          </div>
-
           <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6">
             <h2 className="text-lg font-semibold text-white mb-4">Average Score Comparison</h2>
             <Bar
@@ -390,7 +379,7 @@ function Dashboard() {
             </div>
           </div>
 
-          <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6">
+          <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6 lg:col-span-2">
             <h2 className="text-lg font-semibold text-white mb-4">Avg Score by City Round</h2>
             <Bar
               data={cityBarData}
@@ -472,23 +461,6 @@ function Dashboard() {
           </div>
         </div>
       )}
-    </div>
-  )
-}
-
-function StatCard({
-  icon, label, value, color,
-}: {
-  icon: React.ReactNode
-  label: string
-  value: string
-  color: string
-}) {
-  return (
-    <div className="bg-slate-900 rounded-2xl border border-slate-800 p-5">
-      <div className={`${color} mb-2`}>{icon}</div>
-      <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">{label}</div>
-      <div className="text-lg font-bold text-white truncate">{value}</div>
     </div>
   )
 }
