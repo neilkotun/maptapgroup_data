@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
 import {
   Chart as ChartJS,
@@ -15,6 +15,14 @@ import {
 } from 'chart.js'
 import { Bar, Line, Doughnut } from 'react-chartjs-2'
 import { Calendar } from 'lucide-react'
+import {
+  buildPeriods,
+  getRank,
+  Avatar,
+  PERIOD_LENGTH,
+  colorForPlayer,
+  type ScoreRow,
+} from '../shared'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, ArcElement, Title, Tooltip, Legend, Filler)
 
@@ -22,163 +30,20 @@ export const Route = createFileRoute('/')({
   component: Dashboard,
 })
 
-interface LeaderboardEntry {
-  playerId: number
-  playerName: string
-  gamesPlayed: number
-  avgScore: number
-  maxScore: number
-  minScore: number
-  totalPoints: number
-}
-
-interface ScoreRow {
-  gameDate: string
-  playerName: string
-  total: number
-  city1: number | null
-  city2: number | null
-  city3: number | null
-  city4: number | null
-  city5: number | null
-}
-
-interface DailyWinner {
-  game_date: string
-  player_name: string
-  total: number
-}
-
-interface StatsData {
-  leaderboard: LeaderboardEntry[]
-  recentByDate: ScoreRow[]
-  dailyWinners: DailyWinner[]
-  cityAverages: {
-    playerName: string
-    avgCity1: number | null
-    avgCity2: number | null
-    avgCity3: number | null
-    avgCity4: number | null
-    avgCity5: number | null
-  }[]
-}
-
-const PLAYER_COLORS = [
-  '#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6',
-  '#06b6d4', '#f97316', '#84cc16', '#ec4899', '#6366f1',
-]
-
-const MEDAL_ICONS = ['🥇', '🥈', '🥉']
-
-function getRank(index: number) {
-  return MEDAL_ICONS[index] ?? `#${index + 1}`
-}
-
 function Dashboard() {
-  const [stats, setStats] = useState<StatsData | null>(null)
+  const [scores, setScores] = useState<ScoreRow[] | null>(null)
   const [loading, setLoading] = useState(true)
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
     setMounted(true)
-    fetchStats()
+    fetch('/api/scores?limit=10000')
+      .then(res => (res.ok ? res.json() : Promise.reject(new Error(`${res.status}`))))
+      .then(setScores)
+      .catch(() => setScores([]))
+      .finally(() => setLoading(false))
   }, [])
-
-  async function fetchStats() {
-    setLoading(true)
-    try {
-      const res = await fetch('/api/stats')
-      if (res.ok) setStats(await res.json())
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const allDates = stats
-    ? [...new Set(stats.recentByDate.map(s => s.gameDate))].sort((a, b) => b.localeCompare(a))
-    : []
-
-  const displayDate = selectedDate ?? allDates[0] ?? null
-
-  const todayScores = displayDate
-    ? stats?.recentByDate.filter(s => s.gameDate === displayDate).sort((a, b) => b.total - a.total)
-    : []
-
-  // Build line chart: score over time per player (last 10 days)
-  const playerNames = stats?.leaderboard.map(l => l.playerName) ?? []
-  const datesSorted = [...allDates].reverse().slice(-10)
-
-  const lineData = {
-    labels: datesSorted.map(d => d.slice(5)), // MM-DD
-    datasets: playerNames.map((name, idx) => ({
-      label: name,
-      data: datesSorted.map(date => {
-        const row = stats?.recentByDate.find(s => s.gameDate === date && s.playerName === name)
-        return row?.total ?? null
-      }),
-      borderColor: PLAYER_COLORS[idx % PLAYER_COLORS.length],
-      backgroundColor: PLAYER_COLORS[idx % PLAYER_COLORS.length] + '33',
-      tension: 0.3,
-      spanGaps: true,
-      pointRadius: 4,
-    })),
-  }
-
-  // Tighten the y-axis: start just below the lowest plotted score
-  const plottedTotals = lineData.datasets.flatMap(d => d.data).filter((v): v is number => v !== null)
-  const trendYMin = plottedTotals.length
-    ? Math.max(0, Math.floor((Math.min(...plottedTotals) - 25) / 50) * 50)
-    : 0
-  const trendYMax = plottedTotals.length
-    ? Math.min(1000, Math.ceil((Math.max(...plottedTotals) + 25) / 50) * 50)
-    : 1000
-
-  // Doughnut chart: daily win distribution (ties split evenly)
-  const winCounts: Record<string, number> = Object.fromEntries(playerNames.map(n => [n, 0]))
-  for (const date of allDates) {
-    const dayScores = stats?.recentByDate.filter(s => s.gameDate === date) ?? []
-    if (dayScores.length === 0) continue
-    const best = Math.max(...dayScores.map(s => s.total))
-    const winners = dayScores.filter(s => s.total === best)
-    for (const w of winners) {
-      if (w.playerName in winCounts) winCounts[w.playerName] += 1 / winners.length
-    }
-  }
-  const winsData = {
-    labels: playerNames,
-    datasets: [
-      {
-        data: playerNames.map(n => Math.round(winCounts[n] * 10) / 10),
-        backgroundColor: playerNames.map((_, i) => PLAYER_COLORS[i % PLAYER_COLORS.length]),
-        borderWidth: 0,
-      },
-    ],
-  }
-
-  // Grouped bar chart: average score per city round per player
-  const cityBarData = {
-    labels: ['City 1', 'City 2', 'City 3', 'City 4', 'City 5'],
-    datasets: (stats?.cityAverages ?? []).map(row => ({
-      label: row.playerName,
-      data: [row.avgCity1, row.avgCity2, row.avgCity3, row.avgCity4, row.avgCity5].map(v => v !== null ? Number(v) : null),
-      backgroundColor: PLAYER_COLORS[playerNames.indexOf(row.playerName) % PLAYER_COLORS.length] + 'cc',
-      borderRadius: 4,
-    })),
-  }
-
-  // Bar chart: average scores
-  const avgBarData = {
-    labels: stats?.leaderboard.map(l => l.playerName) ?? [],
-    datasets: [
-      {
-        label: 'Average Score',
-        data: stats?.leaderboard.map(l => l.avgScore) ?? [],
-        backgroundColor: playerNames.map((_, i) => PLAYER_COLORS[i % PLAYER_COLORS.length] + 'cc'),
-        borderRadius: 6,
-      },
-    ],
-  }
 
   if (loading) {
     return (
@@ -188,27 +53,115 @@ function Dashboard() {
     )
   }
 
-  if (!stats || stats.leaderboard.length === 0) {
+  const periods = scores ? buildPeriods(scores) : []
+  const period = periods[0]
+
+  if (!period) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-20 text-center">
         <div className="text-6xl mb-4">🌍</div>
         <h1 className="text-3xl font-bold mb-3 text-white">No scores yet!</h1>
-        <p className="text-slate-400">
-          Scores will appear here once they're uploaded.
-        </p>
+        <p className="text-slate-400">Scores will appear here once they're uploaded.</p>
       </div>
     )
   }
 
-  const totalGames = allDates.length
-  const totalEntries = stats.recentByDate.length
+  // Everything below is scoped to the current 10-day period.
+  const periodScores = (scores ?? []).filter(s => period.dates.includes(s.gameDate))
+  const standings = period.standings
+  const orderedNames = standings.map(s => s.playerName) // ranked order
+  const periodDatesDesc = [...period.dates].sort((a, b) => b.localeCompare(a))
+  const periodDatesAsc = [...period.dates].sort()
+
+  const displayDate = selectedDate && period.dates.includes(selectedDate)
+    ? selectedDate
+    : periodDatesDesc[0] ?? null
+
+  const dayScores = displayDate
+    ? periodScores.filter(s => s.gameDate === displayDate).sort((a, b) => b.total - a.total)
+    : []
+
+  // Score trends across the period
+  const lineData = {
+    labels: periodDatesAsc.map(d => d.slice(5)),
+    datasets: orderedNames.map(name => ({
+      label: name,
+      data: periodDatesAsc.map(date => {
+        const row = periodScores.find(s => s.gameDate === date && s.playerName === name)
+        return row?.total ?? null
+      }),
+      borderColor: colorForPlayer(name, orderedNames),
+      backgroundColor: colorForPlayer(name, orderedNames) + '33',
+      tension: 0.3,
+      spanGaps: true,
+      pointRadius: 4,
+    })),
+  }
+  const plotted = lineData.datasets.flatMap(d => d.data).filter((v): v is number => v !== null)
+  const trendYMin = plotted.length ? Math.max(0, Math.floor((Math.min(...plotted) - 25) / 50) * 50) : 0
+  const trendYMax = plotted.length ? Math.min(1000, Math.ceil((Math.max(...plotted) + 25) / 50) * 50) : 1000
+
+  // Win distribution doughnut
+  const winsData = {
+    labels: orderedNames,
+    datasets: [{
+      data: standings.map(s => s.wins),
+      backgroundColor: orderedNames.map(n => colorForPlayer(n, orderedNames)),
+      borderWidth: 0,
+    }],
+  }
+
+  // Avg score per city round per player, for the period
+  const cityBarData = {
+    labels: ['City 1', 'City 2', 'City 3', 'City 4', 'City 5'],
+    datasets: orderedNames.map(name => {
+      const rows = periodScores.filter(s => s.playerName === name)
+      const cityAvg = (key: keyof ScoreRow) => {
+        const vals = rows.map(r => r[key]).filter((v): v is number => typeof v === 'number')
+        return vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : null
+      }
+      return {
+        label: name,
+        data: [cityAvg('city1'), cityAvg('city2'), cityAvg('city3'), cityAvg('city4'), cityAvg('city5')],
+        backgroundColor: colorForPlayer(name, orderedNames) + 'cc',
+        borderRadius: 4,
+      }
+    }),
+  }
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 space-y-8">
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-white">MapTap Leaderboard</h1>
-        <p className="text-slate-400 mt-1">{totalGames} game days · {totalEntries} scores submitted</p>
+        <p className="text-slate-400 mt-1">
+          Current 10-day period · {period.startDate} → {period.endDate} · {period.dates.length}/{PERIOD_LENGTH} days played
+        </p>
+      </div>
+
+      {/* Avatar ranking strip (current period, ranked left → right) */}
+      <div className="bg-slate-900 rounded-2xl border border-slate-800 p-4 overflow-x-auto">
+        <div className="flex items-end gap-4 min-w-max">
+          {standings.map((s, idx) => (
+            <Link
+              key={s.playerName}
+              to="/players/$playerId"
+              params={{ playerId: String(s.playerId) }}
+              className="flex flex-col items-center gap-1 group"
+            >
+              <div className="text-lg">{getRank(idx)}</div>
+              <div className="relative">
+                <Avatar name={s.playerName} size={56} />
+                <div
+                  className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-slate-900"
+                  style={{ backgroundColor: colorForPlayer(s.playerName, orderedNames) }}
+                />
+              </div>
+              <div className="text-sm font-medium text-white group-hover:text-emerald-400 transition-colors">{s.playerName}</div>
+              <div className="text-xs text-slate-500">{s.wins} win{s.wins !== 1 ? 's' : ''}</div>
+            </Link>
+          ))}
+        </div>
       </div>
 
       {/* Daily scores */}
@@ -223,12 +176,12 @@ function Dashboard() {
             value={displayDate ?? ''}
             onChange={e => setSelectedDate(e.target.value)}
           >
-            {allDates.map(d => (
+            {periodDatesDesc.map(d => (
               <option key={d} value={d}>{d}</option>
             ))}
           </select>
         </div>
-        {todayScores && todayScores.length > 0 ? (
+        {dayScores.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -244,10 +197,15 @@ function Dashboard() {
                 </tr>
               </thead>
               <tbody>
-                {todayScores.map((row, idx) => (
+                {dayScores.map((row, idx) => (
                   <tr key={row.playerName} className="border-b border-slate-800/50 hover:bg-slate-800/40 transition-colors">
                     <td className="px-6 py-3 text-lg">{getRank(idx)}</td>
-                    <td className="px-6 py-3 font-medium text-white">{row.playerName}</td>
+                    <td className="px-6 py-3">
+                      <div className="flex items-center gap-3">
+                        <Avatar name={row.playerName} size={28} />
+                        <span className="font-medium text-white">{row.playerName}</span>
+                      </div>
+                    </td>
                     {[row.city1, row.city2, row.city3, row.city4, row.city5].map((c, ci) => (
                       <td key={ci} className="px-6 py-3 text-right">
                         {c !== null ? (
@@ -273,10 +231,10 @@ function Dashboard() {
         )}
       </div>
 
-      {/* Leaderboard table */}
+      {/* Period standings */}
       <div className="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-800">
-          <h2 className="text-lg font-semibold text-white">Overall Rankings</h2>
+          <h2 className="text-lg font-semibold text-white">Period Standings</h2>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -284,36 +242,28 @@ function Dashboard() {
               <tr className="text-slate-400 border-b border-slate-800">
                 <th className="px-6 py-3 text-left">Rank</th>
                 <th className="px-6 py-3 text-left">Player</th>
+                <th className="px-6 py-3 text-right">Daily Wins</th>
                 <th className="px-6 py-3 text-right">Games</th>
                 <th className="px-6 py-3 text-right">Avg Score</th>
-                <th className="px-6 py-3 text-right">Best</th>
-                <th className="px-6 py-3 text-right">Worst</th>
-                <th className="px-6 py-3 text-right">Total Pts</th>
               </tr>
             </thead>
             <tbody>
-              {stats.leaderboard.map((entry, idx) => (
-                <tr
-                  key={entry.playerId}
-                  className="border-b border-slate-800/50 hover:bg-slate-800/40 transition-colors"
-                >
+              {standings.map((s, idx) => (
+                <tr key={s.playerName} className="border-b border-slate-800/50 hover:bg-slate-800/40 transition-colors">
                   <td className="px-6 py-4 text-xl">{getRank(idx)}</td>
                   <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="w-3 h-3 rounded-full"
-                        style={{ backgroundColor: PLAYER_COLORS[idx % PLAYER_COLORS.length] }}
-                      />
-                      <span className="font-medium text-white">{entry.playerName}</span>
-                    </div>
+                    <Link
+                      to="/players/$playerId"
+                      params={{ playerId: String(s.playerId) }}
+                      className="flex items-center gap-3 hover:text-emerald-400"
+                    >
+                      <Avatar name={s.playerName} size={32} />
+                      <span className="font-medium text-white">{s.playerName}</span>
+                    </Link>
                   </td>
-                  <td className="px-6 py-4 text-right text-slate-300">{entry.gamesPlayed ?? 0}</td>
-                  <td className="px-6 py-4 text-right">
-                    <span className="font-bold text-emerald-400">{entry.avgScore ?? '—'}</span>
-                  </td>
-                  <td className="px-6 py-4 text-right text-slate-300">{entry.maxScore ?? '—'}</td>
-                  <td className="px-6 py-4 text-right text-slate-300">{entry.minScore ?? '—'}</td>
-                  <td className="px-6 py-4 text-right text-slate-300">{entry.totalPoints ?? 0}</td>
+                  <td className="px-6 py-4 text-right font-bold text-emerald-400">{s.wins}</td>
+                  <td className="px-6 py-4 text-right text-slate-300">{s.gamesPlayed}</td>
+                  <td className="px-6 py-4 text-right text-slate-300">{s.avgScore}</td>
                 </tr>
               ))}
             </tbody>
@@ -324,14 +274,12 @@ function Dashboard() {
       {/* Score trends — full width */}
       {mounted && (
         <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6">
-          <h2 className="text-lg font-semibold text-white mb-4">Score Trends (last 10 days)</h2>
+          <h2 className="text-lg font-semibold text-white mb-4">Score Trends (this period)</h2>
           <Line
             data={lineData}
             options={{
               responsive: true,
-              plugins: {
-                legend: { position: 'bottom', labels: { color: '#94a3b8', boxWidth: 12 } },
-              },
+              plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8', boxWidth: 12 } } },
               scales: {
                 x: { ticks: { color: '#64748b' }, grid: { color: '#1e293b' } },
                 y: { min: trendYMin, max: trendYMax, ticks: { color: '#64748b' }, grid: { color: '#1e293b' } },
@@ -344,21 +292,6 @@ function Dashboard() {
       {/* Charts */}
       {mounted && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6">
-            <h2 className="text-lg font-semibold text-white mb-4">Average Score Comparison</h2>
-            <Bar
-              data={avgBarData}
-              options={{
-                responsive: true,
-                plugins: { legend: { display: false } },
-                scales: {
-                  x: { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } },
-                  y: { min: 0, max: 1000, ticks: { color: '#64748b' }, grid: { color: '#1e293b' } },
-                },
-              }}
-            />
-          </div>
-
           <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6">
             <h2 className="text-lg font-semibold text-white mb-4">Daily Win Distribution</h2>
             <div className="max-w-xs mx-auto">
@@ -379,7 +312,7 @@ function Dashboard() {
             </div>
           </div>
 
-          <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6 lg:col-span-2">
+          <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6">
             <h2 className="text-lg font-semibold text-white mb-4">Avg Score by City Round</h2>
             <Bar
               data={cityBarData}
@@ -392,72 +325,6 @@ function Dashboard() {
                 },
               }}
             />
-          </div>
-        </div>
-      )}
-
-      {/* City performance */}
-      {stats.cityAverages.length > 0 && (
-        <div className="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-800">
-            <h2 className="text-lg font-semibold text-white">City Performance Averages</h2>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-slate-400 border-b border-slate-800">
-                  <th className="px-6 py-3 text-left">Player</th>
-                  {['City 1', 'City 2', 'City 3', 'City 4', 'City 5'].map(c => (
-                    <th key={c} className="px-6 py-3 text-right">{c}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {stats.cityAverages.map(row => (
-                  <tr key={row.playerName} className="border-b border-slate-800/50 hover:bg-slate-800/40 transition-colors">
-                    <td className="px-6 py-3 font-medium text-white">{row.playerName}</td>
-                    {[row.avgCity1, row.avgCity2, row.avgCity3, row.avgCity4, row.avgCity5].map((v, i) => (
-                      <td key={i} className="px-6 py-3 text-right">
-                        {v !== null ? (
-                          <span className={`font-medium ${Number(v) >= 160 ? 'text-emerald-400' : Number(v) >= 120 ? 'text-blue-400' : Number(v) >= 80 ? 'text-amber-400' : 'text-red-400'}`}>
-                            {v}
-                          </span>
-                        ) : <span className="text-slate-600">—</span>}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* Win history */}
-      {stats.dailyWinners.length > 0 && (
-        <div className="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-800">
-            <h2 className="text-lg font-semibold text-white">Recent Daily Winners</h2>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-slate-400 border-b border-slate-800">
-                  <th className="px-6 py-3 text-left">Date</th>
-                  <th className="px-6 py-3 text-left">Winner</th>
-                  <th className="px-6 py-3 text-right">Score</th>
-                </tr>
-              </thead>
-              <tbody>
-                {stats.dailyWinners.map((w: DailyWinner) => (
-                  <tr key={w.game_date} className="border-b border-slate-800/50 hover:bg-slate-800/40 transition-colors">
-                    <td className="px-6 py-3 text-slate-300">{w.game_date}</td>
-                    <td className="px-6 py-3 font-medium text-amber-400">🏆 {w.player_name}</td>
-                    <td className="px-6 py-3 text-right font-bold text-white">{w.total}<span className="text-slate-500 text-xs ml-1">/1000</span></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
           </div>
         </div>
       )}

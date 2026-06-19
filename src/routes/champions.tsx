@@ -1,76 +1,11 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
 import { Trophy } from 'lucide-react'
+import { buildPeriods, getRank, Avatar, PERIOD_LENGTH, type ScoreRow } from '../shared'
 
 export const Route = createFileRoute('/champions')({
   component: Champions,
 })
-
-interface ScoreRow {
-  id: number
-  playerId: number
-  playerName: string
-  gameDate: string
-  total: number
-}
-
-interface PeriodStanding {
-  playerName: string
-  wins: number
-}
-
-interface Period {
-  index: number
-  startDate: string
-  endDate: string
-  dates: string[]
-  standings: PeriodStanding[]
-  champions: string[]
-  winnersByDate: { date: string; winners: string[]; total: number }[]
-}
-
-const PERIOD_LENGTH = 10
-
-function buildPeriods(scores: ScoreRow[]): Period[] {
-  const allDates = [...new Set(scores.map(s => s.gameDate))].sort()
-  const periods: Period[] = []
-
-  for (let p = 0; p * PERIOD_LENGTH < allDates.length; p++) {
-    const dates = allDates.slice(p * PERIOD_LENGTH, (p + 1) * PERIOD_LENGTH)
-    const winCounts: Record<string, number> = {}
-    const winnersByDate: Period['winnersByDate'] = []
-
-    for (const date of dates) {
-      const dayScores = scores.filter(s => s.gameDate === date)
-      if (dayScores.length === 0) continue
-      const best = Math.max(...dayScores.map(s => s.total))
-      const winners = dayScores.filter(s => s.total === best).map(s => s.playerName)
-      winnersByDate.push({ date, winners, total: best })
-      for (const w of winners) {
-        winCounts[w] = (winCounts[w] ?? 0) + 1 / winners.length
-      }
-    }
-
-    const standings = Object.entries(winCounts)
-      .map(([playerName, wins]) => ({ playerName, wins: Math.round(wins * 10) / 10 }))
-      .sort((a, b) => b.wins - a.wins)
-
-    const topWins = standings[0]?.wins ?? 0
-    const champions = standings.filter(s => s.wins === topWins).map(s => s.playerName)
-
-    periods.push({
-      index: p,
-      startDate: dates[0],
-      endDate: dates[dates.length - 1],
-      dates,
-      standings,
-      champions,
-      winnersByDate,
-    })
-  }
-
-  return periods.reverse() // newest period first
-}
 
 function Champions() {
   const [scores, setScores] = useState<ScoreRow[] | null>(null)
@@ -137,13 +72,18 @@ function Champions() {
       {/* Champion banner */}
       <div className="bg-slate-900 rounded-2xl border border-slate-800 p-8 text-center">
         <Trophy className="w-10 h-10 text-amber-400 mx-auto mb-3" />
-        <div className="text-xs text-slate-500 uppercase tracking-wider mb-2">
+        <div className="text-xs text-slate-500 uppercase tracking-wider mb-3">
           {isCurrentPeriod
             ? `Current Leader (${period.dates.length}/${PERIOD_LENGTH} days played)`
             : `Champion · ${period.startDate} → ${period.endDate}`}
         </div>
+        {period.champions.length > 0 && (
+          <div className="flex items-center justify-center gap-3 mb-1">
+            {period.champions.map(name => <Avatar key={name} name={name} size={56} />)}
+          </div>
+        )}
         <div className="text-3xl font-bold text-amber-400">
-          {period.champions.join(' & ')}
+          {period.champions.length > 0 ? period.champions.join(' & ') : '—'}
         </div>
         <div className="text-slate-400 mt-2 text-sm">
           {period.standings[0]?.wins ?? 0} daily win{(period.standings[0]?.wins ?? 0) !== 1 ? 's' : ''}
@@ -163,14 +103,23 @@ function Champions() {
                 <th className="px-6 py-3 text-left">Rank</th>
                 <th className="px-6 py-3 text-left">Player</th>
                 <th className="px-6 py-3 text-right">Daily Wins</th>
+                <th className="px-6 py-3 text-right">Games</th>
+                <th className="px-6 py-3 text-right">Avg Score</th>
               </tr>
             </thead>
             <tbody>
               {period.standings.map((s, idx) => (
                 <tr key={s.playerName} className="border-b border-slate-800/50 hover:bg-slate-800/40 transition-colors">
-                  <td className="px-6 py-3 text-lg">{['🥇', '🥈', '🥉'][idx] ?? `#${idx + 1}`}</td>
-                  <td className="px-6 py-3 font-medium text-white">{s.playerName}</td>
+                  <td className="px-6 py-3 text-lg">{getRank(idx)}</td>
+                  <td className="px-6 py-3">
+                    <div className="flex items-center gap-3">
+                      <Avatar name={s.playerName} size={32} />
+                      <span className="font-medium text-white">{s.playerName}</span>
+                    </div>
+                  </td>
                   <td className="px-6 py-3 text-right font-bold text-emerald-400">{s.wins}</td>
+                  <td className="px-6 py-3 text-right text-slate-300">{s.gamesPlayed}</td>
+                  <td className="px-6 py-3 text-right text-slate-300">{s.avgScore}</td>
                 </tr>
               ))}
             </tbody>
