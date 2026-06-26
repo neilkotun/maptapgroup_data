@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
 import { Trophy } from 'lucide-react'
-import { buildPeriods, getRank, Avatar, PERIOD_LENGTH, type ScoreRow } from '../shared'
+import { buildPeriods, getRank, PERIOD_LENGTH, type ScoreRow } from '../shared'
 
 export const Route = createFileRoute('/champions')({
   component: Champions,
@@ -77,11 +77,6 @@ function Champions() {
             ? `Current Leader (${period.dates.length}/${PERIOD_LENGTH} days played)`
             : `Champion · ${period.startDate} → ${period.endDate}`}
         </div>
-        {period.champions.length > 0 && (
-          <div className="flex items-center justify-center gap-3 mb-1">
-            {period.champions.map(name => <Avatar key={name} name={name} size={56} />)}
-          </div>
-        )}
         <div className="text-3xl font-bold text-amber-400">
           {period.champions.length > 0 ? period.champions.join(' & ') : '—'}
         </div>
@@ -111,12 +106,7 @@ function Champions() {
               {period.standings.map((s, idx) => (
                 <tr key={s.playerName} className="border-b border-slate-800/50 hover:bg-slate-800/40 transition-colors">
                   <td className="px-6 py-3 text-lg">{getRank(idx)}</td>
-                  <td className="px-6 py-3">
-                    <div className="flex items-center gap-3">
-                      <Avatar name={s.playerName} size={32} />
-                      <span className="font-medium text-white">{s.playerName}</span>
-                    </div>
-                  </td>
+                  <td className="px-6 py-3 font-medium text-white">{s.playerName}</td>
                   <td className="px-6 py-3 text-right font-bold text-emerald-400">{s.wins}</td>
                   <td className="px-6 py-3 text-right text-slate-300">{s.gamesPlayed}</td>
                   <td className="px-6 py-3 text-right text-slate-300">{s.avgScore}</td>

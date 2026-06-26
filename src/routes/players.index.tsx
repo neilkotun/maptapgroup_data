@@ -1,6 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
-import { Avatar } from '../shared'
 
 export const Route = createFileRoute('/players/')({
   component: PlayersIndex,
@@ -48,14 +47,11 @@ function PlayersIndex() {
             key={p.id}
             to="/players/$playerId"
             params={{ playerId: String(p.id) }}
-            className="bg-slate-900 rounded-2xl border border-slate-800 p-5 flex items-center gap-4 hover:border-slate-600 transition-colors"
+            className="bg-slate-900 rounded-2xl border border-slate-800 p-5 hover:border-slate-600 transition-colors"
           >
-            <Avatar name={p.name} size={56} />
-            <div>
-              <div className="font-semibold text-white text-lg">{p.name}</div>
-              <div className="text-sm text-slate-400">
-                {p.gamesPlayed} games · avg {p.avgTotal ?? '—'}
-              </div>
+            <div className="font-semibold text-white text-lg">{p.name}</div>
+            <div className="text-sm text-slate-400">
+              {p.gamesPlayed} games · avg {p.avgTotal ?? '—'}
             </div>
           </Link>
         ))}

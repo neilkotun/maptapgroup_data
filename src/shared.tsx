@@ -32,24 +32,6 @@ export function colorForPlayer(name: string, allNames: string[]) {
   return PLAYER_COLORS[(idx < 0 ? 0 : idx) % PLAYER_COLORS.length]
 }
 
-// DiceBear generated avatar, seeded by the player's name so it stays consistent.
-export function avatarUrl(name: string) {
-  return `https://api.dicebear.com/9.x/adventurer/svg?seed=${encodeURIComponent(name)}&backgroundColor=transparent`
-}
-
-export function Avatar({ name, size = 48 }: { name: string; size?: number }) {
-  return (
-    <img
-      src={avatarUrl(name)}
-      alt={name}
-      width={size}
-      height={size}
-      className="rounded-full bg-slate-800 border border-slate-700 shrink-0"
-      style={{ width: size, height: size }}
-    />
-  )
-}
-
 export interface PeriodStanding {
   playerId: number
   playerName: string

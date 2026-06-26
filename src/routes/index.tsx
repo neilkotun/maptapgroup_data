@@ -18,7 +18,6 @@ import { Calendar } from 'lucide-react'
 import {
   buildPeriods,
   getRank,
-  Avatar,
   PERIOD_LENGTH,
   colorForPlayer,
   type ScoreRow,
@@ -139,31 +138,6 @@ function Dashboard() {
         </p>
       </div>
 
-      {/* Avatar ranking strip (current period, ranked left → right) */}
-      <div className="bg-slate-900 rounded-2xl border border-slate-800 p-4 overflow-x-auto">
-        <div className="flex items-end gap-4 min-w-max">
-          {standings.map((s, idx) => (
-            <Link
-              key={s.playerName}
-              to="/players/$playerId"
-              params={{ playerId: String(s.playerId) }}
-              className="flex flex-col items-center gap-1 group"
-            >
-              <div className="text-lg">{getRank(idx)}</div>
-              <div className="relative">
-                <Avatar name={s.playerName} size={56} />
-                <div
-                  className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-slate-900"
-                  style={{ backgroundColor: colorForPlayer(s.playerName, orderedNames) }}
-                />
-              </div>
-              <div className="text-sm font-medium text-white group-hover:text-emerald-400 transition-colors">{s.playerName}</div>
-              <div className="text-xs text-slate-500">{s.wins} win{s.wins !== 1 ? 's' : ''}</div>
-            </Link>
-          ))}
-        </div>
-      </div>
-
       {/* Daily scores */}
       <div className="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between flex-wrap gap-3">
@@ -200,12 +174,7 @@ function Dashboard() {
                 {dayScores.map((row, idx) => (
                   <tr key={row.playerName} className="border-b border-slate-800/50 hover:bg-slate-800/40 transition-colors">
                     <td className="px-6 py-3 text-lg">{getRank(idx)}</td>
-                    <td className="px-6 py-3">
-                      <div className="flex items-center gap-3">
-                        <Avatar name={row.playerName} size={28} />
-                        <span className="font-medium text-white">{row.playerName}</span>
-                      </div>
-                    </td>
+                    <td className="px-6 py-3 font-medium text-white">{row.playerName}</td>
                     {[row.city1, row.city2, row.city3, row.city4, row.city5].map((c, ci) => (
                       <td key={ci} className="px-6 py-3 text-right">
                         {c !== null ? (
@@ -255,10 +224,9 @@ function Dashboard() {
                     <Link
                       to="/players/$playerId"
                       params={{ playerId: String(s.playerId) }}
-                      className="flex items-center gap-3 hover:text-emerald-400"
+                      className="font-medium text-white hover:text-emerald-400"
                     >
-                      <Avatar name={s.playerName} size={32} />
-                      <span className="font-medium text-white">{s.playerName}</span>
+                      {s.playerName}
                     </Link>
                   </td>
                   <td className="px-6 py-4 text-right font-bold text-emerald-400">{s.wins}</td>

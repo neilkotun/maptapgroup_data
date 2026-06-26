@@ -13,7 +13,7 @@ import {
 } from 'chart.js'
 import { Bar, Line } from 'react-chartjs-2'
 import { ArrowLeft, Trophy, Target, TrendingUp, Star } from 'lucide-react'
-import { Avatar, type ScoreRow } from '../shared'
+import { type ScoreRow } from '../shared'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Tooltip, Legend, Filler)
 
@@ -111,12 +111,9 @@ function PlayerStats() {
       </Link>
 
       {/* Header */}
-      <div className="flex items-center gap-5">
-        <Avatar name={name} size={80} />
-        <div>
-          <h1 className="text-3xl font-bold text-white">{name}</h1>
-          <p className="text-slate-400 mt-1">{games} games played</p>
-        </div>
+      <div>
+        <h1 className="text-3xl font-bold text-white">{name}</h1>
+        <p className="text-slate-400 mt-1">{games} games played</p>
       </div>
 
       {/* Stat cards */}
