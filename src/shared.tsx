@@ -32,9 +32,31 @@ export function colorForPlayer(name: string, allNames: string[]) {
   return PLAYER_COLORS[(idx < 0 ? 0 : idx) % PLAYER_COLORS.length]
 }
 
-// DiceBear generated avatar, seeded by the player's name so it stays consistent.
+// DiceBear avatar style — see https://www.dicebear.com/styles for options.
+const AVATAR_STYLE = 'adventurer'
+
+// Per-player avatar customization.
+//
+// To personalize a player's avatar:
+//   1. Open the customizer for the chosen style, e.g.
+//      https://www.dicebear.com/styles/adventurer/
+//   2. Tweak the options (hair, skin, glasses, etc.) — or just change the seed
+//      to reshuffle the whole look until you like it.
+//   3. Click "Copy URL" and paste ONLY the query-string part (everything after
+//      the "?") below, keyed by the exact player name as it appears in the app.
+//
+// Any player not listed here falls back to an avatar seeded by their name.
+const AVATAR_OVERRIDES: Record<string, string> = {
+  // Example (delete or replace):
+  // Neil: 'seed=Neil&hair=short16&skinColor=f2d3b1',
+  // Jay:  'seed=cooljay&glasses=variant04&glassesProbability=100',
+}
+
+// DiceBear generated avatar. Uses a per-player override when present,
+// otherwise seeds by the player's name so it stays consistent.
 export function avatarUrl(name: string) {
-  return `https://api.dicebear.com/9.x/adventurer/svg?seed=${encodeURIComponent(name)}&backgroundColor=transparent`
+  const opts = AVATAR_OVERRIDES[name] ?? `seed=${encodeURIComponent(name)}`
+  return `https://api.dicebear.com/9.x/${AVATAR_STYLE}/svg?backgroundColor=transparent&${opts}`
 }
 
 export function Avatar({ name, size = 48 }: { name: string; size?: number }) {
